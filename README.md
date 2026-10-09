@@ -1,10 +1,10 @@
 ## 🛠️ Pré-requisitos de Instalação
 
 Para rodar e editar o projeto, certifique-se de ter os seguintes requisitos não funcionais configurados[cite: 6]:
-* **Unity** (Versão 6000.3.14f1, instalada via Unity Hub)[cite: 6].
-* **Visual Studio Code** (com extensão para a linguagem C#)[cite: 6].
+* **Unity** (Versão 6000.3.14f1, instalada via Unity Hub.
+* **Visual Studio Code** (com extensão para a linguagem C#).
 * **Aplicativo Meta Quest Link** instalado e logado no PC.
-* **Meta Quest** (ou outro visor VR compatível com conexão para PC)[cite: 6].
+* **Meta Quest** (ou outro visor VR compatível com conexão para PC).
 
 ---
 
