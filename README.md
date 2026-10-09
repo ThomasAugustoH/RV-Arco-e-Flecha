@@ -10,7 +10,7 @@ Para rodar e editar o projeto, certifique-se de ter os seguintes requisitos não
 
 ## ⚙️ Configuração Inicial do Projeto
 
-1. Clone o repositório na sua máquina executando `git clone <URL_DO_SEU_REPOSITORIO>` no terminal.
+1. Clone o repositório na sua máquina executando `git clone` no terminal.
 2. Abra o Unity Hub, clique em **Add** e selecione a pasta do projeto.
 3. **Correção de Input do Simulador:** Vá em `Edit > Project Settings > Player > Other Settings`. Role até **Active Input Handling** e garanta que está como **Both**. Reinicie a Unity se precisar alterar.
 
