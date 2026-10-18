@@ -1,5 +1,7 @@
-using UnityEngine;
+using System;
 using System.Collections.Generic;
+using UnityEngine;
+using ArcheryGame.Scoring;
 
 public class GameManager : MonoBehaviour
 {
@@ -7,7 +9,27 @@ public class GameManager : MonoBehaviour
     public int maxTargets = 5; // Inicia com limite de 5 para o editor
     public float currentTargetSpeed = 0f;
 
+    [Header("Pontuação")]
+    [SerializeField] private int totalScore = 0;
+    [SerializeField] private int totalShots = 0;
+    [SerializeField] private int totalHits = 0;
+
     private List<GameObject> activeTargets = new List<GameObject>();
+
+    /// <summary>Fired when the score changes. Parameter is the new total score.</summary>
+    public event Action<int> OnScoreChanged;
+
+    /// <summary>Fired when shot/hit statistics change. Parameters: (totalShots, totalHits).</summary>
+    public event Action<int, int> OnStatsChanged;
+
+    /// <summary>Current total score.</summary>
+    public int TotalScore => totalScore;
+
+    /// <summary>Total arrows fired.</summary>
+    public int TotalShots => totalShots;
+
+    /// <summary>Total arrows that hit a target.</summary>
+    public int TotalHits => totalHits;
 
     public bool CanPlaceTarget()
     {
@@ -26,6 +48,39 @@ public class GameManager : MonoBehaviour
             movement = newTarget.AddComponent<TargetMovement>();
         }
         movement.speed = currentTargetSpeed;
+
+        // Ensure the target has a collision handler for arrow scoring
+        TargetCollisionHandler handler = newTarget.GetComponent<TargetCollisionHandler>();
+        if (handler == null)
+        {
+            handler = newTarget.AddComponent<TargetCollisionHandler>();
+        }
+        handler.OnScored += HandleTargetScored;
+    }
+
+    public void RegisterShot()
+    {
+        totalShots++;
+        OnStatsChanged?.Invoke(totalShots, totalHits);
+    }
+
+    public void AddScore(int points)
+    {
+        if (points <= 0) return;
+
+        totalScore += points;
+        OnScoreChanged?.Invoke(totalScore);
+    }
+
+    private void HandleTargetScored(int points, Vector3 hitPoint)
+    {
+        if (points > 0)
+        {
+            totalHits++;
+            AddScore(points);
+        }
+
+        OnStatsChanged?.Invoke(totalShots, totalHits);
     }
 
     public bool IsTarget(GameObject obj)
@@ -105,5 +160,11 @@ public class GameManager : MonoBehaviour
             }
         }
         activeTargets.Clear();
+
+        totalScore = 0;
+        totalShots = 0;
+        totalHits = 0;
+        OnScoreChanged?.Invoke(totalScore);
+        OnStatsChanged?.Invoke(totalShots, totalHits);
     }
 }

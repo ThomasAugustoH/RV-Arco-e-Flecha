@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using TMPro;
 
 public class GameUIController : MonoBehaviour
 {
@@ -11,6 +12,7 @@ public class GameUIController : MonoBehaviour
     [Header("Painéis da interface")]
     public GameObject difficultyPanel;
     public GameObject gameplayPanel;
+    public TextMeshProUGUI scoreText;
 
     private void Start()
     {
@@ -21,6 +23,27 @@ public class GameUIController : MonoBehaviour
 
         if (targetSetter != null)
             targetSetter.canPlaceTargets = true;
+
+        if (gameManager == null)
+            gameManager = FindFirstObjectByType<GameManager>();
+
+        if (gameManager != null)
+        {
+            gameManager.OnScoreChanged += UpdateScore;
+            UpdateScore(gameManager.TotalScore);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (gameManager != null)
+            gameManager.OnScoreChanged -= UpdateScore;
+    }
+
+    private void UpdateScore(int score)
+    {
+        if (scoreText != null)
+            scoreText.text = $"Score: {score}";
     }
 
     public void ChooseEasy()

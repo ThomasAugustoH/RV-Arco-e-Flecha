@@ -1,5 +1,11 @@
 using UnityEngine;
 
+public enum InteractionMode
+{
+    PlaceTarget,
+    ShootArrow
+}
+
 public class TargetSetter : MonoBehaviour
 {
     [Header("Referências")]
@@ -10,6 +16,7 @@ public class TargetSetter : MonoBehaviour
     [Header("Configurações")]
     public float defaultPlacementDistance = 2.5f; // Distância padrão quando mira no ar/vazio
     public bool canPlaceTargets = true;
+    public InteractionMode interactionMode = InteractionMode.PlaceTarget;
 
     [Header("Cores do Laser")]
     public Color normalLaserColor = Color.cyan;
@@ -107,9 +114,22 @@ public class TargetSetter : MonoBehaviour
                           || OVRInput.GetDown(OVRInput.RawButton.RHandTrigger)
                           || Input.GetKeyDown(KeyCode.Delete);
 
+        bool alternouModo = OVRInput.GetDown(OVRInput.RawButton.A)
+                         || OVRInput.GetDown(OVRInput.Button.One)
+                         || Input.GetKeyDown(KeyCode.Tab);
+
+        if (alternouModo)
+        {
+            interactionMode = interactionMode == InteractionMode.PlaceTarget
+                ? InteractionMode.ShootArrow
+                : InteractionMode.PlaceTarget;
+            return;
+        }
+
         if (clicou || clicouDeletar)
         {
             if (!canPlaceTargets) return;
+            if (interactionMode != InteractionMode.PlaceTarget) return;
             if (Time.time - lastActionTime < actionCooldown) return;
             lastActionTime = Time.time;
 
