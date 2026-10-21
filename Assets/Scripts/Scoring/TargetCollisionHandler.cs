@@ -19,6 +19,9 @@ namespace ArcheryGame.Scoring
         [Tooltip("Ring configuration for this target. Must be sorted by radius ascending (smallest first).")]
         [SerializeField] private TargetRingConfig[] rings;
 
+        [Tooltip("Destroy this target after an arrow collides with it.")]
+        [SerializeField] private bool destroyTargetOnHit = true;
+
         [Header("Events")]
         [Tooltip("Invoked when an arrow scores on this target. Parameter is the score value.")]
         public System.Action<int, Vector3> OnScored;
@@ -87,6 +90,12 @@ namespace ArcheryGame.Scoring
 
             // Notify listeners (GameManager)
             OnScored?.Invoke(score, hitPoint);
+
+            // Keep scoring and statistics updates ahead of removing the target.
+            if (destroyTargetOnHit)
+            {
+                Destroy(gameObject);
+            }
         }
 
         /// <summary>
