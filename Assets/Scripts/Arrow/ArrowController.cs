@@ -2,6 +2,13 @@ using UnityEngine;
 
 namespace ArcheryGame.Arrow
 {
+    public enum ArrowState
+    {
+        Nocked,
+        Flying,
+        Stuck
+    }
+
     /// <summary>
     /// Controls arrow behavior: physics-based flight, rotation toward velocity,
     /// collision handling, and sticking to targets/surfaces.
@@ -22,6 +29,7 @@ namespace ArcheryGame.Arrow
         [Header("State (Read Only)")]
         [SerializeField] private bool isFlying = false;
         [SerializeField] private bool isStuck = false;
+        [SerializeField] private ArrowState state = ArrowState.Nocked;
 
         private Rigidbody rb;
         private float spawnTime;
@@ -31,6 +39,7 @@ namespace ArcheryGame.Arrow
 
         /// <summary>Whether this arrow is stuck in a target or surface.</summary>
         public bool IsStuck => isStuck;
+        public ArrowState State => state;
 
         /// <summary>The arrow's current velocity. Zero if stuck.</summary>
         public Vector3 Velocity => rb != null ? rb.linearVelocity : Vector3.zero;
@@ -45,8 +54,35 @@ namespace ArcheryGame.Arrow
             rb.useGravity = false;
             rb.interpolation = RigidbodyInterpolation.Interpolate; // Smooth VR visuals
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic; // Prevent tunneling through thin targets
-
+            SetColliderEnabled(false);
             spawnTime = Time.time;
+        }
+
+        public void Nock(Transform nockingPoint)
+        {
+            if (nockingPoint == null || isFlying || isStuck) return;
+
+            state = ArrowState.Nocked;
+            isFlying = false;
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            SetColliderEnabled(false);
+            UpdateNockedPosition(nockingPoint.position, nockingPoint.rotation);
+            spawnTime = Time.time;
+        }
+
+        public void UpdateNockedPosition(Vector3 position, Quaternion rotation)
+        {
+            if (state != ArrowState.Nocked) return;
+            rb.position = position;
+            rb.rotation = rotation;
+            transform.SetPositionAndRotation(position, rotation);
+        }
+
+        public void CancelNock()
+        {
+            if (state != ArrowState.Nocked) return;
+            Destroy(gameObject);
         }
 
         /// <summary>
@@ -58,8 +94,10 @@ namespace ArcheryGame.Arrow
             if (isFlying || isStuck) return;
 
             isFlying = true;
+            state = ArrowState.Flying;
             rb.isKinematic = false;
             rb.useGravity = true;
+            SetColliderEnabled(true);
             rb.linearVelocity = velocity;
 
             spawnTime = Time.time;
@@ -115,6 +153,7 @@ namespace ArcheryGame.Arrow
 
             isStuck = true;
             isFlying = false;
+            state = ArrowState.Stuck;
             rb.isKinematic = true;
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
@@ -125,6 +164,12 @@ namespace ArcheryGame.Arrow
 
             // Parent to the surface so the arrow moves with moving targets
             transform.SetParent(surface);
+        }
+
+        private void SetColliderEnabled(bool enabled)
+        {
+            Collider col = GetComponent<Collider>();
+            if (col != null) col.enabled = enabled;
         }
     }
 }

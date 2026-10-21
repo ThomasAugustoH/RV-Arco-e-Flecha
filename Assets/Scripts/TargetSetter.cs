@@ -3,7 +3,8 @@ using UnityEngine;
 public enum InteractionMode
 {
     PlaceTarget,
-    ShootArrow
+    ShootArrow,
+    Archery
 }
 
 public class TargetSetter : MonoBehaviour
@@ -50,7 +51,27 @@ public class TargetSetter : MonoBehaviour
 
     void Update()
     {
+        bool alternouModo = OVRInput.GetDown(OVRInput.RawButton.A)
+                         || OVRInput.GetDown(OVRInput.Button.One)
+                         || Input.GetKeyDown(KeyCode.Tab);
+
+        if (alternouModo)
+        {
+            interactionMode = interactionMode == InteractionMode.PlaceTarget
+                ? InteractionMode.Archery
+                : InteractionMode.PlaceTarget;
+            Debug.Log("[TargetSetter] Modo alterado para: " + interactionMode);
+        }
+
+        if (interactionMode == InteractionMode.Archery)
+        {
+            if (laser != null)
+                laser.enabled = false;
+            return;
+        }
+
         if (laser == null) return;
+        laser.enabled = true;
 
         // Ponto de origem do laser (no controle ou neste objeto)
         Vector3 rayOrigin = rightController != null ? rightController.position : transform.position;
@@ -113,18 +134,6 @@ public class TargetSetter : MonoBehaviour
         bool clicouDeletar = OVRInput.GetDown(OVRInput.RawButton.B)
                           || OVRInput.GetDown(OVRInput.RawButton.RHandTrigger)
                           || Input.GetKeyDown(KeyCode.Delete);
-
-        bool alternouModo = OVRInput.GetDown(OVRInput.RawButton.A)
-                         || OVRInput.GetDown(OVRInput.Button.One)
-                         || Input.GetKeyDown(KeyCode.Tab);
-
-        if (alternouModo)
-        {
-            interactionMode = interactionMode == InteractionMode.PlaceTarget
-                ? InteractionMode.ShootArrow
-                : InteractionMode.PlaceTarget;
-            return;
-        }
 
         if (clicou || clicouDeletar)
         {
