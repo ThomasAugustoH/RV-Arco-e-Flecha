@@ -1,4 +1,6 @@
 using UnityEngine;
+using ArcheryGame.Bow;
+using ArcheryGame.Arrow;
 
 public enum InteractionMode
 {
@@ -21,6 +23,7 @@ public class TargetSetter : MonoBehaviour
     [Header("Cores do Laser")]
     public Color normalLaserColor = Color.cyan;
     public Color targetHoverColor = Color.red;
+    public Color shootModeLaserColor = Color.yellow;
 
     private LineRenderer laser;
     private float lastActionTime = 0f;
@@ -39,6 +42,13 @@ public class TargetSetter : MonoBehaviour
         if (gameManager == null)
         {
             gameManager = FindFirstObjectByType<GameManager>();
+        }
+
+        // Garante que exista um sistema de arco/flecha ativo na cena
+        if (FindFirstObjectByType<BowController>() == null && FindFirstObjectByType<ArrowShooter>() == null)
+        {
+            gameObject.AddComponent<BowController>();
+            Debug.Log("[TargetSetter] BowController adicionado automaticamente para arqueria.");
         }
 
         if (laser != null)
@@ -88,7 +98,13 @@ public class TargetSetter : MonoBehaviour
         }
 
         // Feedback visual do Laser
-        if (targetAtingido != null)
+        if (interactionMode == InteractionMode.ShootArrow)
+        {
+            // No modo tiro, o laser fica Amarelo
+            laser.startColor = shootModeLaserColor;
+            laser.endColor = shootModeLaserColor;
+        }
+        else if (targetAtingido != null)
         {
             // Mirando em um alvo existente: Laser fica Vermelho (clicar vai remover)
             laser.startColor = targetHoverColor;
@@ -101,11 +117,34 @@ public class TargetSetter : MonoBehaviour
             laser.endColor = normalLaserColor;
         }
 
-        // Detecção de Input: Gatilho no Quest, Botão A, clique do mouse no PC ou Barra de Espaço
+        // Alternar modo com teclas 1 e 2 no PC
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            SetInteractionMode(InteractionMode.PlaceTarget);
+            return;
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            SetInteractionMode(InteractionMode.ShootArrow);
+            return;
+        }
+
+        // Alternar modo: Botão A no VR, ou teclas F, M no PC (ou Tab como fallback)
+        bool alternouModo = OVRInput.GetDown(OVRInput.RawButton.A)
+                         || OVRInput.GetDown(OVRInput.Button.One)
+                         || Input.GetKeyDown(KeyCode.F)
+                         || Input.GetKeyDown(KeyCode.M)
+                         || Input.GetKeyDown(KeyCode.Tab);
+
+        if (alternouModo)
+        {
+            ToggleMode();
+            return;
+        }
+
+        // Detecção de Input para colocar/remover alvos (somente no modo PlaceTarget)
         bool clicou = OVRInput.GetDown(OVRInput.RawButton.RIndexTrigger)
                    || OVRInput.GetDown(OVRInput.Button.SecondaryIndexTrigger)
-                   || OVRInput.GetDown(OVRInput.RawButton.A)
-                   || OVRInput.GetDown(OVRInput.Button.One)
                    || Input.GetMouseButtonDown(0)
                    || Input.GetKeyDown(KeyCode.Space);
 
@@ -113,18 +152,6 @@ public class TargetSetter : MonoBehaviour
         bool clicouDeletar = OVRInput.GetDown(OVRInput.RawButton.B)
                           || OVRInput.GetDown(OVRInput.RawButton.RHandTrigger)
                           || Input.GetKeyDown(KeyCode.Delete);
-
-        bool alternouModo = OVRInput.GetDown(OVRInput.RawButton.A)
-                         || OVRInput.GetDown(OVRInput.Button.One)
-                         || Input.GetKeyDown(KeyCode.Tab);
-
-        if (alternouModo)
-        {
-            interactionMode = interactionMode == InteractionMode.PlaceTarget
-                ? InteractionMode.ShootArrow
-                : InteractionMode.PlaceTarget;
-            return;
-        }
 
         if (clicou || clicouDeletar)
         {
@@ -188,5 +215,51 @@ public class TargetSetter : MonoBehaviour
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Alterna entre modo de posicionar alvos e atirar com arco e flecha.
+    /// </summary>
+    public void ToggleMode()
+    {
+        SetInteractionMode(interactionMode == InteractionMode.PlaceTarget
+            ? InteractionMode.ShootArrow
+            : InteractionMode.PlaceTarget);
+    }
+
+    /// <summary>
+    /// Define diretamente o modo de interação.
+    /// </summary>
+    public void SetInteractionMode(InteractionMode mode)
+    {
+        interactionMode = mode;
+        string info = mode == InteractionMode.ShootArrow 
+            ? "🏹 MODO ARCO E FLECHA (Laser Amarelo | Segure T / Clique para puxar a corda, solte para atirar)" 
+            : "🎯 MODO ALVOS (Laser Ciano/Vermelho | Clique para criar/remover alvos)";
+        Debug.Log($"[TargetSetter] {info}");
+    }
+
+    private void OnGUI()
+    {
+        // Botão visual no canto superior da tela para alternar de modo facilmente com 1 clique de mouse
+        GUIStyle btnStyle = new GUIStyle(GUI.skin.button);
+        btnStyle.fontSize = 14;
+        btnStyle.fontStyle = FontStyle.Bold;
+        btnStyle.alignment = TextAnchor.MiddleCenter;
+
+        Color originalColor = GUI.backgroundColor;
+        bool isShoot = interactionMode == InteractionMode.ShootArrow;
+        GUI.backgroundColor = isShoot ? new Color(1f, 0.85f, 0.15f) : new Color(0.2f, 0.85f, 1f);
+
+        string label = isShoot
+            ? "🏹 MODO: ARCO E FLECHA (Laser Amarelo)\n[Clique aqui para MODO ALVOS]"
+            : "🎯 MODO: CRIAR ALVOS (Laser Ciano)\n[Clique aqui para MODO ARCO]";
+
+        if (GUI.Button(new Rect(15, 15, 340, 52), label, btnStyle))
+        {
+            ToggleMode();
+        }
+
+        GUI.backgroundColor = originalColor;
     }
 }

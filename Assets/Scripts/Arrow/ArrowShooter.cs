@@ -41,6 +41,7 @@ namespace ArcheryGame.Arrow
         {
             if (!canShoot) return;
             if (targetSetter != null && targetSetter.interactionMode != InteractionMode.ShootArrow) return;
+            if (FindFirstObjectByType<ArcheryGame.Bow.BowController>() != null) return;
             if (Time.time - lastShotTime < shootCooldown) return;
 
             if (GetShootInput())
