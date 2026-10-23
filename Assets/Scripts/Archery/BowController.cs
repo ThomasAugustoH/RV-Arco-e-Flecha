@@ -22,6 +22,7 @@ namespace ArcheryGame.Archery
         [SerializeField] private TargetSetter targetSetter;
 
         [Header("Draw Settings")]
+        [SerializeField] private Vector3 leftHandGripRotation = new Vector3(0f, 90f, 0f);
         [SerializeField] private float minDrawDistance = 0.05f;
         [SerializeField] private float maxDrawDistance = 0.45f;
         [SerializeField] private float minLaunchSpeed = 5f;
@@ -48,6 +49,7 @@ namespace ArcheryGame.Archery
         private BowState lastLoggedState;
         private bool simulatorFallbackLogged;
         private float drawStartedAt = -1f;
+        private Vector3 currentAimDirection;
 
         public BowState State => state;
         public float CurrentDrawDistance => currentDrawDistance;
@@ -59,13 +61,13 @@ namespace ArcheryGame.Archery
             if (targetSetter == null) targetSetter = FindFirstObjectByType<TargetSetter>();
             ResolveHandReferences();
             if (nockingPoint == null) nockingPoint = transform;
+            currentAimDirection = GetFallbackAimDirection();
 
             if (transform.parent != null &&
-                transform.parent.name == "LeftHandAnchor" &&
-                transform.localPosition.sqrMagnitude > 1f)
+                transform.parent.name == "LeftHandAnchor")
             {
                 transform.localPosition = Vector3.zero;
-                transform.localRotation = Quaternion.identity;
+                transform.localRotation = Quaternion.Euler(leftHandGripRotation);
             }
 
             lastLoggedState = state;
@@ -118,8 +120,10 @@ namespace ArcheryGame.Archery
                 return;
             }
 
+            currentAimDirection = GetAimDirection(GetDrawHandPosition());
+            Quaternion arrowRotation = GetArrowRotation(currentAimDirection);
             GameObject arrowObject = Instantiate(
-                arrowPrefab, nockingPoint.position, nockingPoint.rotation);
+                arrowPrefab, nockingPoint.position, arrowRotation);
             currentArrow = arrowObject.GetComponent<ArrowController>();
             if (currentArrow == null)
             {
@@ -129,6 +133,7 @@ namespace ArcheryGame.Archery
             }
 
             currentArrow.Nock(nockingPoint);
+            currentArrow.UpdateNockedPosition(nockingPoint.position, arrowRotation);
             drawStartedAt = Time.time;
             state = BowState.Drawing;
             LogDiagnostic("Arrow nocked. State=Drawing.");
@@ -139,17 +144,20 @@ namespace ArcheryGame.Archery
             if (currentArrow == null) return;
 
             Vector3 drawHandPosition = GetDrawHandPosition();
-            currentDrawDistance = BowDrawMath.CalculateDrawDistance(
-                drawHandPosition, nockingPoint.position, GetBowForward());
+            currentAimDirection = GetAimDirection(drawHandPosition);
+            currentDrawDistance = Mathf.Clamp(
+                Vector3.Distance(drawHandPosition, nockingPoint.position),
+                0f,
+                maxDrawDistance);
             state = currentDrawDistance >= minDrawDistance
                 ? BowState.Ready
                 : BowState.Drawing;
 
-            Vector3 arrowPosition = Vector3.Lerp(
-                nockingPoint.position,
-                drawHandPosition,
-                Mathf.Clamp01(currentDrawDistance / Mathf.Max(maxDrawDistance, Mathf.Epsilon)));
-            currentArrow.UpdateNockedPosition(arrowPosition, nockingPoint.rotation);
+            Vector3 arrowPosition = nockingPoint.position -
+                                    currentAimDirection * currentDrawDistance;
+            currentArrow.UpdateNockedPosition(
+                arrowPosition,
+                GetArrowRotation(currentAimDirection));
             bowString?.SetNockingPosition(arrowPosition);
             LogStateChange();
         }
@@ -166,7 +174,7 @@ namespace ArcheryGame.Archery
             }
 
             Vector3 velocity = BowDrawMath.CalculateLaunchVelocity(
-                GetBowForward(), currentDrawDistance, minDrawDistance,
+                currentAimDirection, currentDrawDistance, minDrawDistance,
                 maxDrawDistance, minLaunchSpeed, maxLaunchSpeed, drawCurve);
             currentArrow.Launch(velocity);
             gameManager?.RegisterShot();
@@ -175,6 +183,7 @@ namespace ArcheryGame.Archery
             currentDrawDistance = 0f;
             drawStartedAt = -1f;
             state = BowState.Idle;
+            bowString?.SetNockingPosition(nockingPoint.position);
             LogStateChange();
         }
 
@@ -344,6 +353,34 @@ namespace ArcheryGame.Archery
             return transform.forward.sqrMagnitude > Mathf.Epsilon
                 ? transform.forward
                 : bowHand.forward;
+        }
+
+        private Vector3 GetAimDirection(Vector3 drawHandPosition)
+        {
+            Vector3 direction = nockingPoint.position - drawHandPosition;
+            return direction.sqrMagnitude > 0.0001f
+                ? direction.normalized
+                : GetFallbackAimDirection();
+        }
+
+        private Vector3 GetFallbackAimDirection()
+        {
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null &&
+                mainCamera.transform.forward.sqrMagnitude > Mathf.Epsilon)
+            {
+                return mainCamera.transform.forward.normalized;
+            }
+
+            return GetBowForward().normalized;
+        }
+
+        private Quaternion GetArrowRotation(Vector3 direction)
+        {
+            Vector3 up = transform.up.sqrMagnitude > Mathf.Epsilon
+                ? transform.up
+                : Vector3.up;
+            return Quaternion.LookRotation(direction, up);
         }
 
         private void UpdateDesktopBowMovement()

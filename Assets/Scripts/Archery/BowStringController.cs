@@ -8,14 +8,32 @@ namespace ArcheryGame.Archery
         [SerializeField] private LineRenderer lowerString;
         [SerializeField] private Transform topStringPoint;
         [SerializeField] private Transform bottomStringPoint;
+        [SerializeField] private float stringWidth = 0.008f;
+        [SerializeField] private Color stringColor = new Color(0.92f, 0.92f, 0.92f, 1f);
 
         private Vector3 nockingPosition;
+        private Material stringMaterial;
 
         private void Awake()
         {
+            Shader stringShader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (stringShader == null) stringShader = Shader.Find("Sprites/Default");
+            if (stringShader != null)
+            {
+                stringMaterial = new Material(stringShader)
+                {
+                    color = stringColor
+                };
+            }
+
             ConfigureLine(upperString);
             ConfigureLine(lowerString);
             nockingPosition = transform.position;
+        }
+
+        private void OnDestroy()
+        {
+            if (stringMaterial != null) Destroy(stringMaterial);
         }
 
         public void SetNockingPosition(Vector3 position)
@@ -29,11 +47,16 @@ namespace ArcheryGame.Archery
             UpdateLine(lowerString, bottomStringPoint, nockingPosition);
         }
 
-        private static void ConfigureLine(LineRenderer line)
+        private void ConfigureLine(LineRenderer line)
         {
             if (line == null) return;
             line.positionCount = 2;
             line.useWorldSpace = true;
+            line.startWidth = stringWidth;
+            line.endWidth = stringWidth;
+            line.startColor = stringColor;
+            line.endColor = stringColor;
+            if (stringMaterial != null) line.sharedMaterial = stringMaterial;
         }
 
         private static void UpdateLine(

@@ -26,6 +26,13 @@ namespace ArcheryGame.Arrow
         [Tooltip("Time in seconds before the arrow auto-destroys if it hasn't hit anything.")]
         [SerializeField] private float maxLifetime = 10f;
 
+        [Header("Visual Settings")]
+        [Tooltip("Comprimento visível da flecha, em metros.")]
+        [SerializeField] private float arrowLength = 0.75f;
+
+        [Tooltip("Raio visual da haste, em metros.")]
+        [SerializeField] private float shaftRadius = 0.01f;
+
         [Header("State (Read Only)")]
         [SerializeField] private bool isFlying = false;
         [SerializeField] private bool isStuck = false;
@@ -49,6 +56,7 @@ namespace ArcheryGame.Arrow
 
         private void Awake()
         {
+            ConfigureArrowShape();
             rb = GetComponent<Rigidbody>();
             rb.isKinematic = true; // Start kinematic until launched
             rb.useGravity = false;
@@ -56,6 +64,45 @@ namespace ArcheryGame.Arrow
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic; // Prevent tunneling through thin targets
             SetColliderEnabled(false);
             spawnTime = Time.time;
+        }
+
+        private void ConfigureArrowShape()
+        {
+            // The original prefab is a uniformly scaled Unity cylinder. Keep the
+            // physics root facing +Z and put the cylinder mesh on a rotated child,
+            // so aiming and flight rotation use the same forward axis.
+            transform.localScale = Vector3.one;
+
+            MeshFilter sourceFilter = GetComponent<MeshFilter>();
+            MeshRenderer sourceRenderer = GetComponent<MeshRenderer>();
+            if (sourceFilter != null && sourceRenderer != null)
+            {
+                GameObject shaft = new GameObject("ArrowShaftVisual");
+                shaft.transform.SetParent(transform, false);
+                shaft.transform.localPosition = new Vector3(0f, 0f, arrowLength * 0.5f);
+                shaft.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                shaft.transform.localScale = new Vector3(
+                    shaftRadius,
+                    arrowLength * 0.5f,
+                    shaftRadius);
+
+                MeshFilter shaftFilter = shaft.AddComponent<MeshFilter>();
+                shaftFilter.sharedMesh = sourceFilter.sharedMesh;
+                MeshRenderer shaftRenderer = shaft.AddComponent<MeshRenderer>();
+                shaftRenderer.sharedMaterials = sourceRenderer.sharedMaterials;
+                shaftRenderer.shadowCastingMode = sourceRenderer.shadowCastingMode;
+                shaftRenderer.receiveShadows = sourceRenderer.receiveShadows;
+                sourceRenderer.enabled = false;
+            }
+
+            CapsuleCollider capsule = GetComponent<CapsuleCollider>();
+            if (capsule != null)
+            {
+                capsule.direction = 2; // Z axis
+                capsule.center = new Vector3(0f, 0f, arrowLength * 0.5f);
+                capsule.height = arrowLength;
+                capsule.radius = shaftRadius * 1.5f;
+            }
         }
 
         public void Nock(Transform nockingPoint)
