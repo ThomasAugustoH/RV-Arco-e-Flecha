@@ -1,5 +1,6 @@
 using UnityEngine;
 using ArcheryGame.Arrow;
+using ArcheryGame.Audio;
 
 namespace ArcheryGame.Archery
 {
@@ -136,6 +137,7 @@ namespace ArcheryGame.Archery
             currentArrow.UpdateNockedPosition(nockingPoint.position, arrowRotation);
             drawStartedAt = Time.time;
             state = BowState.Drawing;
+            GameAudioManager.Instance?.StartBowDraw(nockingPoint.position);
             LogDiagnostic("Arrow nocked. State=Drawing.");
         }
 
@@ -159,6 +161,7 @@ namespace ArcheryGame.Archery
                 arrowPosition,
                 GetArrowRotation(currentAimDirection));
             bowString?.SetNockingPosition(arrowPosition);
+            GameAudioManager.Instance?.UpdateBowDrawPosition(arrowPosition);
             LogStateChange();
         }
 
@@ -173,11 +176,14 @@ namespace ArcheryGame.Archery
                 return;
             }
 
+            float forceFactor = BowDrawMath.CalculateForceFactor(
+                currentDrawDistance, minDrawDistance, maxDrawDistance, drawCurve);
             Vector3 velocity = BowDrawMath.CalculateLaunchVelocity(
                 currentAimDirection, currentDrawDistance, minDrawDistance,
                 maxDrawDistance, minLaunchSpeed, maxLaunchSpeed, drawCurve);
             currentArrow.Launch(velocity);
             gameManager?.RegisterShot();
+            GameAudioManager.Instance?.PlayBowRelease(nockingPoint.position, forceFactor);
             LogDiagnostic($"Arrow launched. Distance={currentDrawDistance:F3}, speed={velocity.magnitude:F2}, velocity={velocity}.");
             currentArrow = null;
             currentDrawDistance = 0f;
@@ -204,6 +210,7 @@ namespace ArcheryGame.Archery
             state = BowState.Idle;
             if (hadDraw)
             {
+                GameAudioManager.Instance?.StopBowDraw();
                 LogDiagnostic("Draw cancelled and nocked arrow destroyed.");
                 LogStateChange();
             }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using ArcheryGame.Audio;
 
 namespace ArcheryGame.Arrow
 {
@@ -175,14 +176,22 @@ namespace ArcheryGame.Arrow
         {
             if (isStuck) return;
 
+            Vector3 contactPoint = collision.contactCount > 0
+                ? collision.GetContact(0).point
+                : transform.position;
+
             // Attempt to notify the target's collision handler
             var targetHandler = collision.gameObject.GetComponentInParent<Scoring.TargetCollisionHandler>();
 
             if (targetHandler != null)
             {
                 // Hit a target — let the handler process scoring
-                Vector3 contactPoint = collision.GetContact(0).point;
                 targetHandler.ProcessArrowHit(this, contactPoint);
+            }
+            else
+            {
+                // Hit environment/surface outside of a target
+                GameAudioManager.Instance?.PlaySurfaceHit(contactPoint);
             }
 
             // Stick to whatever we hit (target or environment)

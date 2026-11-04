@@ -1,5 +1,6 @@
 using UnityEngine;
 using ArcheryGame.Arrow;
+using ArcheryGame.Audio;
 
 namespace ArcheryGame.Scoring
 {
@@ -81,10 +82,12 @@ namespace ArcheryGame.Scoring
 
             if (score > 0)
             {
+                GameAudioManager.Instance?.PlayArrowHitTarget(hitPoint);
                 Debug.Log($"[TargetCollisionHandler] HIT! Score: {score} points at position {hitPoint}");
             }
             else
             {
+                GameAudioManager.Instance?.PlaySurfaceHit(hitPoint);
                 Debug.Log($"[TargetCollisionHandler] Miss or invalid hit at position {hitPoint}");
             }
 
