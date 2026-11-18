@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using TMPro;
+using ArcheryGame.Audio;
 
 public class GameUIController : MonoBehaviour
 {
@@ -50,6 +51,7 @@ public class GameUIController : MonoBehaviour
     {
         if (gameManager == null) return;
 
+        GameAudioManager.Instance?.PlayUiClick();
         gameManager.SetDifficultyEasy();
         StartGameplay();
     }
@@ -58,6 +60,7 @@ public class GameUIController : MonoBehaviour
     {
         if (gameManager == null) return;
 
+        GameAudioManager.Instance?.PlayUiClick();
         gameManager.SetDifficultyMedium();
         StartGameplay();
     }
@@ -66,6 +69,7 @@ public class GameUIController : MonoBehaviour
     {
         if (gameManager == null) return;
 
+        GameAudioManager.Instance?.PlayUiClick();
         gameManager.SetDifficultyHard();
         StartGameplay();
     }
@@ -98,11 +102,13 @@ public class GameUIController : MonoBehaviour
     {
         if (gameManager == null) return;
 
+        GameAudioManager.Instance?.PlayUiClick();
         gameManager.ResetTargets();
     }
 
     public void ResetScenario()
     {
+        GameAudioManager.Instance?.PlayUiClick();
         // Reinicia a cena inteira, voltando à seleção
         // de dificuldade e ao estado inicial dos objetos.
         SceneManager.LoadScene(

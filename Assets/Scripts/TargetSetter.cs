@@ -1,4 +1,5 @@
 using UnityEngine;
+using ArcheryGame.Audio;
 
 public enum InteractionMode
 {
@@ -189,6 +190,7 @@ public class TargetSetter : MonoBehaviour
                     {
                         gameManager.RegisterNewTarget(newTarget);
                     }
+                    GameAudioManager.Instance?.PlayTargetAction(spawnPos);
                     Debug.Log("[TargetSetter] Alvo criado com sucesso!");
                 }
                 else

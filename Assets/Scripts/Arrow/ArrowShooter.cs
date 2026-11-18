@@ -1,4 +1,5 @@
 using UnityEngine;
+using ArcheryGame.Audio;
 
 namespace ArcheryGame.Arrow
 {
@@ -119,6 +120,7 @@ namespace ArcheryGame.Arrow
             }
 
             lastShotTime = Time.time;
+            GameAudioManager.Instance?.PlayBowRelease(origin.position);
             Debug.Log($"[ArrowShooter] Arrow launched with force {shootForce} m/s");
         }
     }
