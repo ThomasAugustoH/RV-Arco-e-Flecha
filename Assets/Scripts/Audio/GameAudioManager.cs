@@ -3,37 +3,44 @@ using UnityEngine;
 namespace ArcheryGame.Audio
 {
     /// <summary>
-    /// Centralizes playback of game sound effects (SFX) for bow actions,
-    /// arrow impacts, target placement/removal, and UI interactions.
-    /// Automatically loads clips from Resources/Audio/SFX if not assigned in the Inspector.
+    /// Centralizes playback of game sound effects (SFX) and looping background music.
+    /// Automatically initializes on scene load and loads clips from Resources/Audio/SFX
+    /// if not assigned in the Inspector.
     /// </summary>
     public class GameAudioManager : MonoBehaviour
     {
         public const string BowDrawResourcePath = "Audio/SFX/bow_draw";
         public const string BowReleaseResourcePath = "Audio/SFX/bow_release";
         public const string ArrowHitTargetResourcePath = "Audio/SFX/arrow_hit_target";
+        public const string TargetScoreDingResourcePath = "Audio/SFX/target_score_ding";
         public const string UiClickResourcePath = "Audio/SFX/ui_click";
         public const string TargetActionOrMissResourcePath = "Audio/SFX/target_action_or_miss";
+        public const string BackgroundMusicResourcePath = "Audio/SFX/background_music";
 
         private static GameAudioManager instance;
 
         [Header("Audio Clips")]
+        [SerializeField] private AudioClip backgroundMusicClip;
         [SerializeField] private AudioClip bowDrawClip;
         [SerializeField] private AudioClip bowReleaseClip;
         [SerializeField] private AudioClip arrowHitTargetClip;
+        [SerializeField] private AudioClip targetScoreClip;
         [SerializeField] private AudioClip uiClickClip;
         [SerializeField] private AudioClip targetActionOrMissClip;
 
         [Header("Volume Settings")]
         [SerializeField, Range(0f, 1f)] private float masterVolume = 1f;
+        [SerializeField, Range(0f, 1f)] private float backgroundMusicVolume = 0.25f;
         [SerializeField, Range(0f, 1f)] private float bowDrawVolume = 0.85f;
         [SerializeField, Range(0f, 1f)] private float bowReleaseVolume = 1f;
-        [SerializeField, Range(0f, 1f)] private float arrowHitVolume = 1f;
+        [SerializeField, Range(0f, 1f)] private float arrowHitVolume = 0.85f;
+        [SerializeField, Range(0f, 1f)] private float targetScoreVolume = 0.35f;
         [SerializeField, Range(0f, 1f)] private float uiClickVolume = 0.8f;
         [SerializeField, Range(0f, 1f)] private float targetActionVolume = 0.9f;
 
         private AudioSource uiAudioSource;
         private AudioSource drawAudioSource;
+        private AudioSource musicAudioSource;
 
         public static GameAudioManager Instance
         {
@@ -52,12 +59,24 @@ namespace ArcheryGame.Audio
             }
         }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void BootstrapOnSceneLoad()
+        {
+            if (Instance != null)
+            {
+                Instance.StartBackgroundMusic();
+            }
+        }
+
+        public AudioClip BackgroundMusicClip => backgroundMusicClip;
         public AudioClip BowDrawClip => bowDrawClip;
         public AudioClip BowReleaseClip => bowReleaseClip;
         public AudioClip ArrowHitTargetClip => arrowHitTargetClip;
+        public AudioClip TargetScoreClip => targetScoreClip;
         public AudioClip UiClickClip => uiClickClip;
         public AudioClip TargetActionOrMissClip => targetActionOrMissClip;
         public bool IsBowDrawPlaying => drawAudioSource != null && drawAudioSource.isPlaying;
+        public bool IsBackgroundMusicPlaying => musicAudioSource != null && musicAudioSource.isPlaying;
 
         private void Awake()
         {
@@ -75,6 +94,10 @@ namespace ArcheryGame.Audio
             }
 
             Initialize();
+            if (Application.isPlaying)
+            {
+                StartBackgroundMusic();
+            }
         }
 
         private void OnDestroy()
@@ -93,12 +116,16 @@ namespace ArcheryGame.Audio
 
         public void LoadMissingClipsFromResources()
         {
+            if (backgroundMusicClip == null)
+                backgroundMusicClip = Resources.Load<AudioClip>(BackgroundMusicResourcePath);
             if (bowDrawClip == null)
                 bowDrawClip = Resources.Load<AudioClip>(BowDrawResourcePath);
             if (bowReleaseClip == null)
                 bowReleaseClip = Resources.Load<AudioClip>(BowReleaseResourcePath);
             if (arrowHitTargetClip == null)
                 arrowHitTargetClip = Resources.Load<AudioClip>(ArrowHitTargetResourcePath);
+            if (targetScoreClip == null)
+                targetScoreClip = Resources.Load<AudioClip>(TargetScoreDingResourcePath);
             if (uiClickClip == null)
                 uiClickClip = Resources.Load<AudioClip>(UiClickResourcePath);
             if (targetActionOrMissClip == null)
@@ -116,6 +143,23 @@ namespace ArcheryGame.Audio
                 uiAudioSource.playOnAwake = false;
                 uiAudioSource.loop = false;
                 uiAudioSource.spatialBlend = 0f; // 2D UI sound
+            }
+
+            if (musicAudioSource == null)
+            {
+                Transform existingMusicTransform = transform.Find("BackgroundMusicAudioSource");
+                GameObject musicObj = existingMusicTransform != null
+                    ? existingMusicTransform.gameObject
+                    : new GameObject("BackgroundMusicAudioSource");
+
+                musicObj.transform.SetParent(transform, false);
+                musicAudioSource = musicObj.GetComponent<AudioSource>();
+                if (musicAudioSource == null)
+                    musicAudioSource = musicObj.AddComponent<AudioSource>();
+
+                musicAudioSource.playOnAwake = false;
+                musicAudioSource.loop = true;
+                musicAudioSource.spatialBlend = 0f; // 2D ambient background music
             }
 
             if (drawAudioSource == null)
@@ -136,6 +180,35 @@ namespace ArcheryGame.Audio
                 drawAudioSource.minDistance = 0.5f;
                 drawAudioSource.maxDistance = 15f;
                 drawAudioSource.rolloffMode = AudioRolloffMode.Linear;
+            }
+        }
+
+        /// <summary>
+        /// Starts playing the background music in loop if not already playing.
+        /// </summary>
+        public void StartBackgroundMusic()
+        {
+            Initialize();
+            if (backgroundMusicClip == null || musicAudioSource == null) return;
+
+            musicAudioSource.loop = true;
+            musicAudioSource.volume = backgroundMusicVolume * masterVolume;
+
+            if (musicAudioSource.isPlaying && musicAudioSource.clip == backgroundMusicClip)
+                return;
+
+            musicAudioSource.clip = backgroundMusicClip;
+            musicAudioSource.Play();
+        }
+
+        /// <summary>
+        /// Stops the background music.
+        /// </summary>
+        public void StopBackgroundMusic()
+        {
+            if (musicAudioSource != null && musicAudioSource.isPlaying)
+            {
+                musicAudioSource.Stop();
             }
         }
 
@@ -193,10 +266,27 @@ namespace ArcheryGame.Audio
         }
 
         /// <summary>
-        /// Plays the target hit sound at the arrow impact position.
+        /// Plays both the arrow impact sound and the lowered-volume scoring chime when hitting a target.
         /// Detached from the target GameObject so target destruction does not cut off playback.
         /// </summary>
         public void PlayArrowHitTarget(Vector3 position)
+        {
+            Initialize();
+            if (arrowHitTargetClip != null)
+            {
+                PlaySpatialOneShot(arrowHitTargetClip, position, arrowHitVolume * masterVolume, 1f);
+            }
+
+            if (targetScoreClip != null)
+            {
+                PlaySpatialOneShot(targetScoreClip, position, targetScoreVolume * masterVolume, 1f);
+            }
+        }
+
+        /// <summary>
+        /// Plays the arrow impact sound when hitting a wall or surface in the environment.
+        /// </summary>
+        public void PlaySurfaceHit(Vector3 position)
         {
             Initialize();
             if (arrowHitTargetClip == null) return;
@@ -205,18 +295,7 @@ namespace ArcheryGame.Audio
         }
 
         /// <summary>
-        /// Plays the surface/environment impact sound (or miss sound) at the given position.
-        /// </summary>
-        public void PlaySurfaceHit(Vector3 position)
-        {
-            Initialize();
-            if (targetActionOrMissClip == null) return;
-
-            PlaySpatialOneShot(targetActionOrMissClip, position, targetActionVolume * masterVolume, 1f);
-        }
-
-        /// <summary>
-        /// Plays the target placement or removal sound at the target's position.
+        /// Plays the target placement sound at the target's position in space.
         /// </summary>
         public void PlayTargetAction(Vector3 position)
         {
@@ -227,7 +306,7 @@ namespace ArcheryGame.Audio
         }
 
         /// <summary>
-        /// Plays the 2D UI click / mode switch sound.
+        /// Plays the 2D UI click sound.
         /// </summary>
         public void PlayUiClick()
         {

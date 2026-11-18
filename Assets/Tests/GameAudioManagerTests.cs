@@ -30,9 +30,11 @@ namespace ArcheryGame.Tests
         [Test]
         public void Initialize_LoadsAllAudioClipsFromResources()
         {
+            Assert.IsNotNull(_audioManager.BackgroundMusicClip, "background_music clip should be loaded from Resources.");
             Assert.IsNotNull(_audioManager.BowDrawClip, "bow_draw clip should be loaded from Resources.");
             Assert.IsNotNull(_audioManager.BowReleaseClip, "bow_release clip should be loaded from Resources.");
             Assert.IsNotNull(_audioManager.ArrowHitTargetClip, "arrow_hit_target clip should be loaded from Resources.");
+            Assert.IsNotNull(_audioManager.TargetScoreClip, "target_score_ding clip should be loaded from Resources.");
             Assert.IsNotNull(_audioManager.UiClickClip, "ui_click clip should be loaded from Resources.");
             Assert.IsNotNull(_audioManager.TargetActionOrMissClip, "target_action_or_miss clip should be loaded from Resources.");
         }
@@ -42,6 +44,8 @@ namespace ArcheryGame.Tests
         {
             Assert.DoesNotThrow(() =>
             {
+                _audioManager.StartBackgroundMusic();
+                _audioManager.StopBackgroundMusic();
                 _audioManager.StartBowDraw(Vector3.zero);
                 _audioManager.UpdateBowDrawPosition(Vector3.forward);
                 _audioManager.StopBowDraw();

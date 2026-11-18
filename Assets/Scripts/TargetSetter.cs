@@ -61,7 +61,6 @@ public class TargetSetter : MonoBehaviour
             interactionMode = interactionMode == InteractionMode.PlaceTarget
                 ? InteractionMode.Archery
                 : InteractionMode.PlaceTarget;
-            GameAudioManager.Instance?.PlayUiClick();
             Debug.Log("[TargetSetter] Modo alterado para: " + interactionMode);
         }
 
@@ -147,7 +146,6 @@ public class TargetSetter : MonoBehaviour
             if (targetAtingido != null)
             {
                 // SE ESTÁ MIRANDO EM UM ALVO EXISTENTE -> REMOVE!
-                Vector3 removedTargetPos = targetAtingido.transform.position;
                 Debug.Log("[TargetSetter] Alvo atingido pelo laser! Removendo: " + targetAtingido.name);
                 if (gameManager != null)
                 {
@@ -157,7 +155,6 @@ public class TargetSetter : MonoBehaviour
                 {
                     Destroy(targetAtingido);
                 }
-                GameAudioManager.Instance?.PlayTargetAction(removedTargetPos);
             }
             else if (!clicouDeletar)
             {
