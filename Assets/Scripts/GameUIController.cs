@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using TMPro;
 using ArcheryGame.Audio;
+using ArcheryGame.UI;
 
 public class GameUIController : MonoBehaviour
 {
@@ -44,7 +45,7 @@ public class GameUIController : MonoBehaviour
     private void UpdateScore(int score)
     {
         if (scoreText != null)
-            scoreText.text = $"Score: {score}";
+            scoreText.text = ScoreHud.FormatScore(score);
     }
 
     public void ChooseEasy()

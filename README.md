@@ -38,3 +38,12 @@ Para rodar e editar o projeto, certifique-se de ter os seguintes requisitos não
 4. No menu rápido do Quest, ative o **Quest Link** para conectar ao PC.
 5. Na tela do PC, clique no botão **Play** (▶️) na Unity.
 6. Coloque o visor de volta para visualizar a simulação em Realidade Virtual.
+
+---
+
+## 🎯 Pontuação
+
+* O alvo (0,5 m de diâmetro) é dividido em **5 faixas de 5 cm** a partir do centro.
+* A pontuação **dobra a cada faixa** mais próxima do centro: borda **1**, **2**, **4**, **8** e centro **16** pontos. Acertos fora do alvo valem 0.
+* O total aparece no **canto superior direito da visão** (HUD preso à câmera do Quest), criado automaticamente pelo `GameManager`.
+* A tabela é gerada por `DefaultTargetConfig.CreateDoublingRings` (`Assets/Scripts/Scoring/TargetRingConfig.cs`); o layout do HUD (posição, tamanho, cor) é configurável no componente `ScoreHud`.

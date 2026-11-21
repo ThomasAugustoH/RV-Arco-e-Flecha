@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using ArcheryGame.Scoring;
+using ArcheryGame.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -13,6 +14,10 @@ public class GameManager : MonoBehaviour
     [SerializeField] private int totalScore = 0;
     [SerializeField] private int totalShots = 0;
     [SerializeField] private int totalHits = 0;
+
+    [Header("HUD")]
+    [Tooltip("Mostra a pontuação no canto superior direito da visão do jogador.")]
+    [SerializeField] private bool showScoreHud = true;
 
     private List<GameObject> activeTargets = new List<GameObject>();
 
@@ -30,6 +35,14 @@ public class GameManager : MonoBehaviour
 
     /// <summary>Total arrows that hit a target.</summary>
     public int TotalHits => totalHits;
+
+    private void Awake()
+    {
+        if (showScoreHud && GetComponent<ScoreHud>() == null)
+        {
+            gameObject.AddComponent<ScoreHud>();
+        }
+    }
 
     public bool CanPlaceTarget()
     {
