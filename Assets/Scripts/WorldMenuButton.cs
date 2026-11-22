@@ -4,9 +4,7 @@ using UnityEngine;
 public enum WorldMenuAction
 {
     None,
-    Easy,
-    Medium,
-    Hard,
+    CycleDifficulty,
     ClearTargets
 }
 
@@ -18,6 +16,7 @@ public class WorldMenuButton : MonoBehaviour
     private WorldMenuController menu;
     private WorldMenuAction action;
     private Renderer buttonRenderer;
+    private TextMeshPro buttonLabel;
     private Material runtimeMaterial;
     private Color normalColor;
     private bool selected;
@@ -63,16 +62,16 @@ public class WorldMenuButton : MonoBehaviour
                 1f / buttonScale.z);
             labelObject.transform.localRotation = Quaternion.identity;
 
-            TextMeshPro text = labelObject.GetComponent<TextMeshPro>();
-            text.text = label;
-            text.fontSize = fontSize;
-            text.fontStyle = FontStyles.Bold;
-            text.alignment = TextAlignmentOptions.Center;
-            text.textWrappingMode = TextWrappingModes.NoWrap;
-            text.color = Color.white;
-            text.outlineWidth = 0.2f;
-            text.outlineColor = new Color32(0, 0, 0, 220);
-            text.rectTransform.sizeDelta = labelSize;
+            buttonLabel = labelObject.GetComponent<TextMeshPro>();
+            buttonLabel.text = label;
+            buttonLabel.fontSize = fontSize;
+            buttonLabel.fontStyle = FontStyles.Bold;
+            buttonLabel.alignment = TextAlignmentOptions.Center;
+            buttonLabel.textWrappingMode = TextWrappingModes.NoWrap;
+            buttonLabel.color = Color.white;
+            buttonLabel.outlineWidth = 0.2f;
+            buttonLabel.outlineColor = new Color32(0, 0, 0, 220);
+            buttonLabel.rectTransform.sizeDelta = labelSize;
         }
 
         RefreshColor();
@@ -94,6 +93,12 @@ public class WorldMenuButton : MonoBehaviour
 
         selected = value;
         RefreshColor();
+    }
+
+    public void SetLabel(string value)
+    {
+        if (buttonLabel != null)
+            buttonLabel.text = value;
     }
 
     public void Activate()

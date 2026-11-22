@@ -183,6 +183,22 @@ public class GameManager : MonoBehaviour
         Debug.Log("Dificuldade: DIFÍCIL (3 alvos em movimento)");
     }
 
+    public void CycleDifficulty()
+    {
+        switch (currentDifficulty)
+        {
+            case TargetDifficulty.Easy:
+                SetDifficultyMedium();
+                break;
+            case TargetDifficulty.Medium:
+                SetDifficultyHard();
+                break;
+            default:
+                SetDifficultyEasy();
+                break;
+        }
+    }
+
     private void UpdateTargetMovement()
     {
         activeTargets.RemoveAll(item => item == null);
@@ -210,13 +226,18 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("Apagando todos os alvos...");
         ClearActiveTargets();
+        ResetScoreAndStats();
     }
 
     public void ResetTargets()
     {
         Debug.Log("Reiniciando jogo e apagando alvos...");
         ClearActiveTargets();
+        ResetScoreAndStats();
+    }
 
+    private void ResetScoreAndStats()
+    {
         totalScore = 0;
         totalShots = 0;
         totalHits = 0;

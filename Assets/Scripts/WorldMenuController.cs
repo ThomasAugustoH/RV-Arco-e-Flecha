@@ -7,16 +7,14 @@ public class WorldMenuController : MonoBehaviour
 {
     [Header("Posição na visão")]
     [Tooltip("Posição local à câmera, em metros. O menu acompanha a cabeça do jogador.")]
-    public Vector3 viewOffset = new Vector3(0.68f, -0.02f, 1.55f);
+    public Vector3 viewOffset = new Vector3(0.68f, -0.18f, 1.55f);
 
     private GameManager gameManager;
     private Transform headTransform;
     private GameObject menuRoot;
-    private WorldMenuButton easyButton;
-    private WorldMenuButton mediumButton;
-    private WorldMenuButton hardButton;
+    private WorldMenuButton difficultyButton;
+    private bool menuVisible = true;
 
-    private static readonly Color PanelColor = new Color(0.035f, 0.055f, 0.08f);
     private static readonly Color ButtonColor = new Color(0.12f, 0.23f, 0.31f);
     private static readonly Color ClearColor = new Color(0.43f, 0.14f, 0.13f);
 
@@ -26,8 +24,12 @@ public class WorldMenuController : MonoBehaviour
         if (gameManager == null)
             gameManager = FindFirstObjectByType<GameManager>();
 
+        TargetSetter targetSetter = FindFirstObjectByType<TargetSetter>();
+        if (targetSetter != null)
+            menuVisible = targetSetter.interactionMode == InteractionMode.PlaceTarget;
+
         if (gameManager != null)
-            gameManager.OnDifficultyChanged += RefreshSelection;
+            gameManager.OnDifficultyChanged += RefreshDifficultyLabel;
 
         TryCreateMenu();
     }
@@ -42,7 +44,7 @@ public class WorldMenuController : MonoBehaviour
     private void OnDestroy()
     {
         if (gameManager != null)
-            gameManager.OnDifficultyChanged -= RefreshSelection;
+            gameManager.OnDifficultyChanged -= RefreshDifficultyLabel;
 
         if (menuRoot != null)
             Destroy(menuRoot);
@@ -66,19 +68,15 @@ public class WorldMenuController : MonoBehaviour
         menuRoot.transform.localRotation = Quaternion.identity;
 
         CreateMenuSurface();
-        CreateLabel("MENU", new Vector3(0f, 0.41f, -0.035f), new Vector2(0.62f, 0.09f), 0.42f);
-        CreateLabel("ALVOS EM MOVIMENTO", new Vector3(0f, 0.29f, -0.035f), new Vector2(0.62f, 0.07f), 0.27f);
-
-        easyButton = CreateButton("FÁCIL  |  0", WorldMenuAction.Easy,
-            new Vector3(0f, 0.10f, -0.05f), new Vector3(0.62f, 0.115f, 0.035f), ButtonColor, 0.4f);
-        mediumButton = CreateButton("MÉDIO  |  1", WorldMenuAction.Medium,
-            new Vector3(0f, -0.08f, -0.05f), new Vector3(0.62f, 0.115f, 0.035f), ButtonColor, 0.4f);
-        hardButton = CreateButton("DIFÍCIL  |  3", WorldMenuAction.Hard,
-            new Vector3(0f, -0.26f, -0.05f), new Vector3(0.62f, 0.115f, 0.035f), ButtonColor, 0.34f);
+        CreateLabel("DIFICULDADE", new Vector3(0f, 0.25f, -0.035f), new Vector2(0.68f, 0.08f), 0.36f);
+        difficultyButton = CreateButton(GetDifficultyLabel(gameManager.CurrentDifficulty), WorldMenuAction.CycleDifficulty,
+            new Vector3(0f, 0.08f, -0.05f), new Vector3(0.78f, 0.14f, 0.035f), ButtonColor, 0.47f);
+        CreateLabel("CLIQUE PARA MUDAR", new Vector3(0f, -0.035f, -0.035f), new Vector2(0.78f, 0.06f), 0.3f);
         CreateButton("APAGAR TUDO", WorldMenuAction.ClearTargets,
-            new Vector3(0f, -0.44f, -0.05f), new Vector3(0.62f, 0.115f, 0.035f), ClearColor, 0.34f);
+            new Vector3(0f, -0.21f, -0.05f), new Vector3(0.78f, 0.14f, 0.035f), ClearColor, 0.42f);
 
-        RefreshSelection(gameManager.CurrentDifficulty);
+        RefreshDifficultyLabel(gameManager.CurrentDifficulty);
+        menuRoot.SetActive(menuVisible);
     }
 
     private void CreateMenuSurface()
@@ -88,10 +86,10 @@ public class WorldMenuController : MonoBehaviour
         surface.transform.SetParent(menuRoot.transform, false);
         surface.transform.localPosition = Vector3.zero;
         surface.transform.localRotation = Quaternion.identity;
-        surface.transform.localScale = new Vector3(0.7f, 1.0f, 0.04f);
+        surface.transform.localScale = new Vector3(0.86f, 0.70f, 0.04f);
 
         WorldMenuButton surfaceButton = surface.AddComponent<WorldMenuButton>();
-        surfaceButton.Initialize(this, WorldMenuAction.None, PanelColor, false, null, Vector2.zero, 0f);
+        surfaceButton.Initialize(this, WorldMenuAction.None, Color.black, false, null, Vector2.zero, 0f);
         surface.GetComponent<Renderer>().enabled = false;
     }
 
@@ -139,14 +137,9 @@ public class WorldMenuController : MonoBehaviour
 
         switch (action)
         {
-            case WorldMenuAction.Easy:
-                gameManager.SetDifficultyEasy();
-                break;
-            case WorldMenuAction.Medium:
-                gameManager.SetDifficultyMedium();
-                break;
-            case WorldMenuAction.Hard:
-                gameManager.SetDifficultyHard();
+            case WorldMenuAction.CycleDifficulty:
+                gameManager.CycleDifficulty();
+                gameManager.DeleteAllTargets();
                 break;
             case WorldMenuAction.ClearTargets:
                 gameManager.DeleteAllTargets();
@@ -154,13 +147,32 @@ public class WorldMenuController : MonoBehaviour
         }
     }
 
-    private void RefreshSelection(TargetDifficulty difficulty)
+    public void SetVisible(bool visible)
     {
-        if (easyButton == null)
+        menuVisible = visible;
+        if (menuRoot != null && menuRoot.activeSelf != visible)
+            menuRoot.SetActive(visible);
+    }
+
+    private void RefreshDifficultyLabel(TargetDifficulty difficulty)
+    {
+        if (difficultyButton == null)
             return;
 
-        easyButton.SetSelected(difficulty == TargetDifficulty.Easy);
-        mediumButton.SetSelected(difficulty == TargetDifficulty.Medium);
-        hardButton.SetSelected(difficulty == TargetDifficulty.Hard);
+        difficultyButton.SetLabel(GetDifficultyLabel(difficulty));
+        difficultyButton.SetSelected(true);
+    }
+
+    private static string GetDifficultyLabel(TargetDifficulty difficulty)
+    {
+        switch (difficulty)
+        {
+            case TargetDifficulty.Medium:
+                return "MÉDIO · 1";
+            case TargetDifficulty.Hard:
+                return "DIFÍCIL · 3";
+            default:
+                return "FÁCIL · 0";
+        }
     }
 }

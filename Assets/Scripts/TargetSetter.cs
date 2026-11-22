@@ -27,6 +27,7 @@ public class TargetSetter : MonoBehaviour
 
     private LineRenderer laser;
     private WorldMenuButton hoveredMenuButton;
+    private WorldMenuController worldMenuController;
     private float lastActionTime = 0f;
     private const float actionCooldown = 0.2f;
 
@@ -44,6 +45,10 @@ public class TargetSetter : MonoBehaviour
         {
             gameManager = FindFirstObjectByType<GameManager>();
         }
+
+        worldMenuController = FindFirstObjectByType<WorldMenuController>();
+        if (worldMenuController != null)
+            worldMenuController.SetVisible(interactionMode == InteractionMode.PlaceTarget);
 
         if (laser != null)
         {
@@ -66,9 +71,12 @@ public class TargetSetter : MonoBehaviour
             Debug.Log("[TargetSetter] Modo alterado para: " + interactionMode);
         }
 
-        bool archeryMode = interactionMode == InteractionMode.Archery;
+        bool creationMode = interactionMode == InteractionMode.PlaceTarget;
+        if (worldMenuController != null)
+            worldMenuController.SetVisible(creationMode);
+
         if (laser != null)
-            laser.enabled = !archeryMode;
+            laser.enabled = creationMode;
 
         // Ponto de origem do laser (no controle ou neste objeto)
         Vector3 rayOrigin = rightController != null ? rightController.position : transform.position;
@@ -122,10 +130,6 @@ public class TargetSetter : MonoBehaviour
             if (hoveredMenuButton != null)
                 hoveredMenuButton.SetHovered(true);
         }
-
-        // In archery mode the pointer stays hidden except when aiming at a menu control.
-        if (laser != null && archeryMode)
-            laser.enabled = menuButtonAtingido != null;
 
         // Feedback visual do Laser
         if (laser != null && menuButtonAtingido != null)

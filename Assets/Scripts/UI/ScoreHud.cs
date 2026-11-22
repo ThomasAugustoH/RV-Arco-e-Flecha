@@ -25,7 +25,7 @@ namespace ArcheryGame.UI
 
         [Header("Layout")]
         [Tooltip("Position relative to the camera: +X right, +Y up, +Z forward (meters).")]
-        [SerializeField] private Vector3 viewOffset = new Vector3(0.22f, 0.14f, 0.7f);
+        [SerializeField] private Vector3 viewOffset = new Vector3(0.5f, 0.36f, 0.7f);
 
         [Tooltip("TextMeshPro font size (world-space units; 0.4 ≈ 4cm tall glyphs).")]
         [SerializeField] private float fontSize = 0.4f;
