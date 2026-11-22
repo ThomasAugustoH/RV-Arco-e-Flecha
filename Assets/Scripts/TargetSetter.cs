@@ -23,8 +23,10 @@ public class TargetSetter : MonoBehaviour
     [Header("Cores do Laser")]
     public Color normalLaserColor = Color.cyan;
     public Color targetHoverColor = Color.red;
+    public Color menuHoverLaserColor = Color.green;
 
     private LineRenderer laser;
+    private WorldMenuButton hoveredMenuButton;
     private float lastActionTime = 0f;
     private const float actionCooldown = 0.2f;
 
@@ -64,41 +66,42 @@ public class TargetSetter : MonoBehaviour
             Debug.Log("[TargetSetter] Modo alterado para: " + interactionMode);
         }
 
-        if (interactionMode == InteractionMode.Archery)
-        {
-            if (laser != null)
-                laser.enabled = false;
-            return;
-        }
-
-        if (laser == null) return;
-        laser.enabled = true;
+        bool archeryMode = interactionMode == InteractionMode.Archery;
+        if (laser != null)
+            laser.enabled = !archeryMode;
 
         // Ponto de origem do laser (no controle ou neste objeto)
         Vector3 rayOrigin = rightController != null ? rightController.position : transform.position;
         Vector3 rayDirection = rightController != null ? rightController.forward : transform.forward;
 
-        laser.SetPosition(0, rayOrigin);
+        if (laser != null)
+            laser.SetPosition(0, rayOrigin);
 
         RaycastHit hit;
-        bool acertouAlgo = Physics.Raycast(rayOrigin, rayDirection, out hit, 15f);
+        bool acertouAlgo = Physics.Raycast(rayOrigin, rayDirection, out hit, 15f,
+            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide);
 
         GameObject targetAtingido = null;
+        WorldMenuButton menuButtonAtingido = null;
 
         if (acertouAlgo)
         {
-            laser.SetPosition(1, hit.point);
+            if (laser != null)
+                laser.SetPosition(1, hit.point);
+
+            // Botões físicos têm prioridade sobre alvos e superfícies do cenário.
+            menuButtonAtingido = hit.collider.GetComponentInParent<WorldMenuButton>();
 
             // Verifica se o objeto atingido é um alvo existente
-            if (gameManager != null && gameManager.IsTarget(hit.collider.gameObject))
+            if (menuButtonAtingido == null && gameManager != null && gameManager.IsTarget(hit.collider.gameObject))
             {
                 targetAtingido = hit.collider.gameObject;
             }
-            else if (hit.collider.GetComponentInParent<TargetMovement>() != null)
+            else if (menuButtonAtingido == null && hit.collider.GetComponentInParent<TargetMovement>() != null)
             {
                 targetAtingido = hit.collider.GetComponentInParent<TargetMovement>().gameObject;
             }
-            else if (hit.collider.name.Contains("Target") || hit.collider.CompareTag("Target"))
+            else if (menuButtonAtingido == null && (hit.collider.name.Contains("Target") || hit.collider.CompareTag("Target")))
             {
                 targetAtingido = hit.collider.gameObject;
             }
@@ -106,17 +109,37 @@ public class TargetSetter : MonoBehaviour
         else
         {
             // Laser vai no vazio
-            laser.SetPosition(1, rayOrigin + (rayDirection * 10f));
+            if (laser != null)
+                laser.SetPosition(1, rayOrigin + (rayDirection * 10f));
         }
 
+        if (hoveredMenuButton != menuButtonAtingido)
+        {
+            if (hoveredMenuButton != null)
+                hoveredMenuButton.SetHovered(false);
+
+            hoveredMenuButton = menuButtonAtingido;
+            if (hoveredMenuButton != null)
+                hoveredMenuButton.SetHovered(true);
+        }
+
+        // In archery mode the pointer stays hidden except when aiming at a menu control.
+        if (laser != null && archeryMode)
+            laser.enabled = menuButtonAtingido != null;
+
         // Feedback visual do Laser
-        if (targetAtingido != null)
+        if (laser != null && menuButtonAtingido != null)
+        {
+            laser.startColor = menuHoverLaserColor;
+            laser.endColor = menuHoverLaserColor;
+        }
+        else if (laser != null && targetAtingido != null)
         {
             // Mirando em um alvo existente: Laser fica Vermelho (clicar vai remover)
             laser.startColor = targetHoverColor;
             laser.endColor = targetHoverColor;
         }
-        else
+        else if (laser != null)
         {
             // Mirando no ambiente ou ar: Laser Ciano normal (clicar vai criar alvo)
             laser.startColor = normalLaserColor;
@@ -138,6 +161,16 @@ public class TargetSetter : MonoBehaviour
 
         if (clicou || clicouDeletar)
         {
+            // O fundo também é tratado como botão sem ação, evitando que um clique
+            // sobre a placa crie/remova um alvo atrás do menu.
+            if (menuButtonAtingido != null)
+            {
+                if (Time.time - lastActionTime < actionCooldown) return;
+                lastActionTime = Time.time;
+                menuButtonAtingido.Activate();
+                return;
+            }
+
             if (!canPlaceTargets) return;
             if (interactionMode != InteractionMode.PlaceTarget) return;
             if (Time.time - lastActionTime < actionCooldown) return;

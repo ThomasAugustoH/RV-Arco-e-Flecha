@@ -4,11 +4,22 @@ using UnityEngine;
 using ArcheryGame.Scoring;
 using ArcheryGame.UI;
 
+public enum TargetDifficulty
+{
+    Easy,
+    Medium,
+    Hard
+}
+
 public class GameManager : MonoBehaviour
 {
     [Header("Configurações de Dificuldade")]
-    public int maxTargets = 5; // Inicia com limite de 5 para o editor
-    public float currentTargetSpeed = 0f;
+    public int maxTargets = 1;
+    public float currentTargetSpeed = 2f;
+    public int movingTargetCount = 0;
+    [SerializeField] private TargetDifficulty currentDifficulty = TargetDifficulty.Easy;
+
+    public TargetDifficulty CurrentDifficulty => currentDifficulty;
 
     [Header("Pontuação")]
     [SerializeField] private int totalScore = 0;
@@ -27,6 +38,9 @@ public class GameManager : MonoBehaviour
     /// <summary>Fired when shot/hit statistics change. Parameters: (totalShots, totalHits).</summary>
     public event Action<int, int> OnStatsChanged;
 
+    /// <summary>Fired after the difficulty and target movement have been updated.</summary>
+    public event Action<TargetDifficulty> OnDifficultyChanged;
+
     /// <summary>Current total score.</summary>
     public int TotalScore => totalScore;
 
@@ -38,10 +52,15 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
+        ApplyDifficultySettings(currentDifficulty, false);
+
         if (showScoreHud && GetComponent<ScoreHud>() == null)
         {
             gameObject.AddComponent<ScoreHud>();
         }
+
+        if (GetComponent<WorldMenuController>() == null)
+            gameObject.AddComponent<WorldMenuController>();
     }
 
     public bool CanPlaceTarget()
@@ -55,12 +74,10 @@ public class GameManager : MonoBehaviour
         if (newTarget == null) return;
         activeTargets.Add(newTarget);
 
-        TargetMovement movement = newTarget.GetComponent<TargetMovement>();
-        if (movement == null)
-        {
-            movement = newTarget.AddComponent<TargetMovement>();
-        }
-        movement.speed = currentTargetSpeed;
+        if (newTarget.GetComponent<TargetMovement>() == null)
+            newTarget.AddComponent<TargetMovement>();
+
+        UpdateTargetMovement();
 
         // Ensure the target has a collision handler for arrow scoring
         TargetCollisionHandler handler = newTarget.GetComponent<TargetCollisionHandler>();
@@ -113,6 +130,7 @@ public class GameManager : MonoBehaviour
         {
             activeTargets.Remove(targetToRemove);
             Destroy(targetToRemove);
+            UpdateTargetMovement();
             Debug.Log("Alvo removido com sucesso!");
         }
         else
@@ -121,50 +139,93 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // Trava que verifica se o jogo já começou
-    private bool CanChangeDifficulty()
+    private void ApplyDifficultySettings(TargetDifficulty difficulty, bool notify)
     {
-        activeTargets.RemoveAll(item => item == null);
-        
-        if (activeTargets.Count > 0)
+        currentDifficulty = difficulty;
+        currentTargetSpeed = 2f;
+
+        switch (difficulty)
         {
-            Debug.LogWarning("Jogo em andamento! Use o Reset antes de trocar a dificuldade.");
-            return false; // Bloqueia a mudança
+            case TargetDifficulty.Easy:
+                maxTargets = 1;
+                movingTargetCount = 0;
+                break;
+            case TargetDifficulty.Medium:
+                maxTargets = 3;
+                movingTargetCount = 1;
+                break;
+            case TargetDifficulty.Hard:
+                maxTargets = 5;
+                movingTargetCount = 3;
+                break;
         }
-        
-        return true; // Libera a mudança
+
+        UpdateTargetMovement();
+        if (notify)
+            OnDifficultyChanged?.Invoke(currentDifficulty);
     }
 
     public void SetDifficultyEasy()
     {
-        if (!CanChangeDifficulty()) return;
-        
-        Debug.Log("Dificuldade: FACIL (1 Alvo, Parado)");
-        maxTargets = 1;
-        currentTargetSpeed = 0f;
+        ApplyDifficultySettings(TargetDifficulty.Easy, true);
+        Debug.Log("Dificuldade: FÁCIL (0 alvos em movimento)");
     }
 
     public void SetDifficultyMedium()
     {
-        if (!CanChangeDifficulty()) return;
-        
-        Debug.Log("Dificuldade: MEDIO (3 Alvos, Parados)");
-        maxTargets = 3;
-        currentTargetSpeed = 0f;
+        ApplyDifficultySettings(TargetDifficulty.Medium, true);
+        Debug.Log("Dificuldade: MÉDIO (1 alvo em movimento)");
     }
 
     public void SetDifficultyHard()
     {
-        if (!CanChangeDifficulty()) return;
-        
-        Debug.Log("Dificuldade: DIFICIL (5 Alvos, Movimento)");
-        maxTargets = 5;
-        currentTargetSpeed = 2f; // Apenas os alvos criados no modo Hard terão movimento
+        ApplyDifficultySettings(TargetDifficulty.Hard, true);
+        Debug.Log("Dificuldade: DIFÍCIL (3 alvos em movimento)");
+    }
+
+    private void UpdateTargetMovement()
+    {
+        activeTargets.RemoveAll(item => item == null);
+
+        int movingTargetsAssigned = 0;
+        foreach (GameObject target in activeTargets)
+        {
+            TargetMovement movement = target.GetComponent<TargetMovement>();
+            if (movement == null)
+                continue;
+
+            if (movingTargetsAssigned < movingTargetCount)
+            {
+                movement.speed = currentTargetSpeed;
+                movingTargetsAssigned++;
+            }
+            else
+            {
+                movement.speed = 0f;
+            }
+        }
+    }
+
+    public void DeleteAllTargets()
+    {
+        Debug.Log("Apagando todos os alvos...");
+        ClearActiveTargets();
     }
 
     public void ResetTargets()
     {
         Debug.Log("Reiniciando jogo e apagando alvos...");
+        ClearActiveTargets();
+
+        totalScore = 0;
+        totalShots = 0;
+        totalHits = 0;
+        OnScoreChanged?.Invoke(totalScore);
+        OnStatsChanged?.Invoke(totalShots, totalHits);
+    }
+
+    private void ClearActiveTargets()
+    {
         foreach (GameObject target in activeTargets)
         {
             if (target != null)
@@ -173,11 +234,6 @@ public class GameManager : MonoBehaviour
             }
         }
         activeTargets.Clear();
-
-        totalScore = 0;
-        totalShots = 0;
-        totalHits = 0;
-        OnScoreChanged?.Invoke(totalScore);
-        OnStatsChanged?.Invoke(totalShots, totalHits);
+        UpdateTargetMovement();
     }
 }
