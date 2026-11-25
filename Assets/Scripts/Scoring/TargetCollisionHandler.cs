@@ -28,6 +28,7 @@ namespace ArcheryGame.Scoring
         public System.Action<int, Vector3> OnScored;
 
         private ScoringService scoringService;
+        private bool consumed;
 
         private void Awake()
         {
@@ -52,14 +53,13 @@ namespace ArcheryGame.Scoring
         /// </summary>
         /// <param name="arrow">The arrow that hit this target.</param>
         /// <param name="hitPoint">The world-space contact point of the collision.</param>
-        public void ProcessArrowHit(ArrowController arrow, Vector3 hitPoint)
+        /// <param name="relativeVelocity">The relative velocity reported for the impact.</param>
+        public void ProcessArrowHit(ArrowController arrow, Vector3 hitPoint, Vector3 relativeVelocity)
         {
-            if (arrow == null) return;
+            if (arrow == null || consumed) return;
+            consumed = destroyTargetOnHit;
 
-            // Validate that the arrow was moving fast enough
-            // (use velocity from just before impact — arrow may already be stopped)
-            // Note: In most cases, OnCollisionEnter fires before velocity is zeroed out
-            bool validHit = CollisionMath.IsValidHit(arrow.Velocity, arrow.MinHitSpeed);
+            bool validHit = CollisionMath.IsValidHit(relativeVelocity, arrow.MinHitSpeed);
 
             int score;
 

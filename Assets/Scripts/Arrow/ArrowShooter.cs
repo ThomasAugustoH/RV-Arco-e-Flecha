@@ -22,7 +22,7 @@ namespace ArcheryGame.Arrow
         [Tooltip("Game manager that receives shot statistics.")]
         [SerializeField] private GameManager gameManager;
 
-        [Tooltip("Optional target setter used to share the placement/shooting mode.")]
+        [Tooltip("The main scene uses its bow for shooting when a target setter is present.")]
         [SerializeField] private TargetSetter targetSetter;
 
         [Tooltip("Force multiplier applied to the arrow on launch (m/s).")]
@@ -40,8 +40,7 @@ namespace ArcheryGame.Arrow
 
         private void Update()
         {
-            if (!canShoot) return;
-            if (targetSetter != null && targetSetter.interactionMode != InteractionMode.ShootArrow) return;
+            if (!canShoot || targetSetter != null || (gameManager != null && !gameManager.CanShoot)) return;
             if (Time.time - lastShotTime < shootCooldown) return;
 
             if (GetShootInput())
@@ -104,7 +103,7 @@ namespace ArcheryGame.Arrow
             if (arrow != null)
             {
                 arrow.Launch(origin.forward * shootForce);
-                gameManager?.RegisterShot();
+                gameManager?.RegisterShot(arrow);
             }
             else
             {

@@ -62,9 +62,7 @@ namespace ArcheryGame.Arrow
             rb.isKinematic = true; // Start kinematic until launched
             rb.useGravity = false;
             rb.interpolation = RigidbodyInterpolation.Interpolate; // Smooth VR visuals
-            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic; // Prevent tunneling through thin targets
             SetColliderEnabled(false);
-            spawnTime = Time.time;
         }
 
         private void ConfigureArrowShape()
@@ -116,7 +114,6 @@ namespace ArcheryGame.Arrow
             rb.useGravity = false;
             SetColliderEnabled(false);
             UpdateNockedPosition(nockingPoint.position, nockingPoint.rotation);
-            spawnTime = Time.time;
         }
 
         public void UpdateNockedPosition(Vector3 position, Quaternion rotation)
@@ -144,6 +141,7 @@ namespace ArcheryGame.Arrow
             isFlying = true;
             state = ArrowState.Flying;
             rb.isKinematic = false;
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             rb.useGravity = true;
             SetColliderEnabled(true);
             rb.linearVelocity = velocity;
@@ -166,7 +164,7 @@ namespace ArcheryGame.Arrow
         private void Update()
         {
             // Auto-destroy after timeout
-            if (!isStuck && Time.time - spawnTime > maxLifetime)
+            if (isFlying && Time.time - spawnTime > maxLifetime)
             {
                 Destroy(gameObject);
             }
@@ -174,7 +172,7 @@ namespace ArcheryGame.Arrow
 
         private void OnCollisionEnter(Collision collision)
         {
-            if (isStuck) return;
+            if (!isFlying) return;
 
             Vector3 contactPoint = collision.contactCount > 0
                 ? collision.GetContact(0).point
@@ -186,7 +184,7 @@ namespace ArcheryGame.Arrow
             if (targetHandler != null)
             {
                 // Hit a target — let the handler process scoring
-                targetHandler.ProcessArrowHit(this, contactPoint);
+                targetHandler.ProcessArrowHit(this, contactPoint, collision.relativeVelocity);
             }
             else
             {
@@ -210,9 +208,10 @@ namespace ArcheryGame.Arrow
             isStuck = true;
             isFlying = false;
             state = ArrowState.Stuck;
-            rb.isKinematic = true;
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
+            rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
+            rb.isKinematic = true;
 
             // Disable collider to prevent further collision events
             var col = GetComponent<Collider>();

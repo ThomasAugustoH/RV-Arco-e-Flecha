@@ -20,7 +20,6 @@ namespace ArcheryGame.Archery
         [SerializeField] private GameObject arrowPrefab;
         [SerializeField] private BowStringController bowString;
         [SerializeField] private GameManager gameManager;
-        [SerializeField] private TargetSetter targetSetter;
 
         [Header("Draw Settings")]
         [SerializeField] private Vector3 leftHandGripRotation = new Vector3(0f, 90f, 0f);
@@ -37,7 +36,7 @@ namespace ArcheryGame.Archery
         [SerializeField] private float simulatedFullDrawTime = 1.5f;
         [SerializeField] private float desktopBowMoveSensitivity = 0.0025f;
         [SerializeField] private float vrTriggerThreshold = 0.1f;
-        [SerializeField] private bool enableInputDiagnostics = true;
+        [SerializeField] private bool enableInputDiagnostics;
         [SerializeField] private float diagnosticsInterval = 0.25f;
 
         [Header("State")]
@@ -46,6 +45,7 @@ namespace ArcheryGame.Archery
 
         private ArrowController currentArrow;
         private bool wasDrawing;
+        private bool waitForInputRelease;
         private float nextDiagnosticsTime;
         private BowState lastLoggedState;
         private bool simulatorFallbackLogged;
@@ -59,7 +59,6 @@ namespace ArcheryGame.Archery
         private void Start()
         {
             if (gameManager == null) gameManager = FindFirstObjectByType<GameManager>();
-            if (targetSetter == null) targetSetter = FindFirstObjectByType<TargetSetter>();
             ResolveHandReferences();
             if (nockingPoint == null) nockingPoint = transform;
             currentAimDirection = GetFallbackAimDirection();
@@ -77,14 +76,20 @@ namespace ArcheryGame.Archery
 
         private void Update()
         {
-            if (!enabledInArcheryMode ||
-                (targetSetter != null && targetSetter.interactionMode != InteractionMode.Archery))
+            if (!enabledInArcheryMode || (gameManager != null && !gameManager.CanShoot))
             {
+                waitForInputRelease = true;
                 CancelDraw();
                 return;
             }
 
             bool drawing = GetDrawInput();
+            if (waitForInputRelease)
+            {
+                waitForInputRelease = drawing;
+                return;
+            }
+
             UpdateDesktopBowMovement();
             LogInputDiagnostic(drawing);
             if (drawing)
@@ -97,18 +102,23 @@ namespace ArcheryGame.Archery
                 LogDiagnostic("Input released. Calling ReleaseDraw().");
                 ReleaseDraw();
             }
+            else
+            {
+                bowString?.ResetToRest();
+            }
 
             wasDrawing = drawing;
         }
 
         private void OnDisable()
         {
+            waitForInputRelease = true;
             CancelDraw();
         }
 
         public void BeginDraw()
         {
-            if (currentArrow != null)
+            if (currentArrow != null || (gameManager != null && !gameManager.CanShoot))
                 return;
             if (arrowPrefab == null)
             {
@@ -167,9 +177,13 @@ namespace ArcheryGame.Archery
 
         public void ReleaseDraw()
         {
-            if (currentArrow == null) return;
+            if (currentArrow == null)
+            {
+                CancelDraw();
+                return;
+            }
 
-            if (currentDrawDistance < minDrawDistance)
+            if (currentDrawDistance < minDrawDistance || (gameManager != null && !gameManager.CanShoot))
             {
                 LogDiagnostic($"Release cancelled: draw distance {currentDrawDistance:F3} < minimum {minDrawDistance:F3}.");
                 CancelDraw();
@@ -182,14 +196,14 @@ namespace ArcheryGame.Archery
                 currentAimDirection, currentDrawDistance, minDrawDistance,
                 maxDrawDistance, minLaunchSpeed, maxLaunchSpeed, drawCurve);
             currentArrow.Launch(velocity);
-            gameManager?.RegisterShot();
+            gameManager?.RegisterShot(currentArrow);
             GameAudioManager.Instance?.PlayBowRelease(nockingPoint.position, forceFactor);
             LogDiagnostic($"Arrow launched. Distance={currentDrawDistance:F3}, speed={velocity.magnitude:F2}, velocity={velocity}.");
             currentArrow = null;
             currentDrawDistance = 0f;
             drawStartedAt = -1f;
             state = BowState.Idle;
-            bowString?.SetNockingPosition(nockingPoint.position);
+            bowString?.ResetToRest();
             LogStateChange();
         }
 
@@ -208,25 +222,19 @@ namespace ArcheryGame.Archery
             currentDrawDistance = 0f;
             drawStartedAt = -1f;
             state = BowState.Idle;
+            wasDrawing = false;
             if (hadDraw)
             {
                 GameAudioManager.Instance?.StopBowDraw();
                 LogDiagnostic("Draw cancelled and nocked arrow destroyed.");
                 LogStateChange();
             }
-            bowString?.SetNockingPosition(nockingPoint != null
-                ? nockingPoint.position
-                : transform.position);
+            bowString?.ResetToRest();
         }
 
         private bool GetDrawInput()
         {
-            bool desktop = useDesktopInput &&
-                (Input.GetMouseButton(0) ||
-                 Input.GetMouseButton(1) ||
-                 Input.GetKey(KeyCode.Space));
-
-            return desktop || IsVrTriggerPressed();
+            return IsDesktopDrawInput() || IsVrTriggerPressed();
         }
 
         private Vector3 GetDrawHandPosition()
@@ -263,7 +271,7 @@ namespace ArcheryGame.Archery
 
         private bool IsDesktopDrawInput()
         {
-            return useDesktopInput &&
+            return useDesktopInput && !Application.isMobilePlatform &&
                 (Input.GetMouseButton(0) ||
                  Input.GetMouseButton(1) ||
                  Input.GetKey(KeyCode.Space));
@@ -283,12 +291,8 @@ namespace ArcheryGame.Archery
         {
             try
             {
-                float rightTrigger = GetVrTriggerValue(OVRInput.Axis1D.SecondaryIndexTrigger);
-                float leftTrigger = GetVrTriggerValue(OVRInput.Axis1D.PrimaryIndexTrigger);
-                return rightTrigger >= vrTriggerThreshold ||
-                       leftTrigger >= vrTriggerThreshold ||
-                       OVRInput.Get(OVRInput.RawButton.RIndexTrigger) ||
-                       OVRInput.Get(OVRInput.RawButton.LIndexTrigger);
+                return GetVrTriggerValue() >= vrTriggerThreshold ||
+                       OVRInput.Get(OVRInput.RawButton.RIndexTrigger);
             }
             catch (System.InvalidOperationException)
             {
@@ -298,16 +302,9 @@ namespace ArcheryGame.Archery
 
         private float GetVrTriggerValue()
         {
-            return Mathf.Max(
-                GetVrTriggerValue(OVRInput.Axis1D.PrimaryIndexTrigger),
-                GetVrTriggerValue(OVRInput.Axis1D.SecondaryIndexTrigger));
-        }
-
-        private float GetVrTriggerValue(OVRInput.Axis1D axis)
-        {
             try
             {
-                return OVRInput.Get(axis);
+                return OVRInput.Get(OVRInput.RawAxis1D.RIndexTrigger);
             }
             catch (System.InvalidOperationException)
             {
@@ -324,8 +321,7 @@ namespace ArcheryGame.Archery
             LogDiagnostic(
                 $"Input={drawing}, mouseL={Input.GetMouseButton(0)}, " +
                 $"mouseR={Input.GetMouseButton(1)}, space={Input.GetKey(KeyCode.Space)}, " +
-                $"triggerL={GetVrTriggerValue(OVRInput.Axis1D.PrimaryIndexTrigger):F2}, " +
-                $"triggerR={GetVrTriggerValue(OVRInput.Axis1D.SecondaryIndexTrigger):F2}, " +
+                $"triggerR={GetVrTriggerValue():F2}, " +
                 $"wasDrawing={wasDrawing}, state={state}, distance={currentDrawDistance:F3}");
         }
 
@@ -392,7 +388,7 @@ namespace ArcheryGame.Archery
 
         private void UpdateDesktopBowMovement()
         {
-            if (!useDesktopInput || IsVrTriggerPressed() || !Input.GetMouseButton(2))
+            if (!useDesktopInput || Application.isMobilePlatform || IsVrTriggerPressed() || !Input.GetMouseButton(2))
                 return;
 
             Vector3 movement = new Vector3(

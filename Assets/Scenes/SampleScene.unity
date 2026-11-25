@@ -1404,9 +1404,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b5cdebb78531ba942badfbd2cb2af26c, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  maxTargets: 5
-  currentTargetSpeed: 0
+  m_EditorClassIdentifier: ArcheryGame::GameManager
   totalScore: 0
   totalShots: 0
   totalHits: 0
@@ -6162,13 +6160,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 99cea171d0d5ff94db34574c5535ba29, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::NewMonoBehaviourScript
+  m_EditorClassIdentifier: ArcheryGame::TargetSetter
   rightController: {fileID: 1676048998}
   targetPrefab: {fileID: 1510797320957063706, guid: eaa5064a29e0ec24a871b36a0d7169c9, type: 3}
   gameManager: {fileID: 220580820}
   defaultPlacementDistance: 2.5
-  canPlaceTargets: 0
-  interactionMode: 0
   normalLaserColor: {r: 0, g: 1, b: 1, a: 1}
   targetHoverColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!120 &1134222166
@@ -10039,12 +10035,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 43261edb4eabdf64a92a0543c4a8a5ca, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GameUIController
+  m_EditorClassIdentifier: ArcheryGame::GameUIController
   gameManager: {fileID: 220580820}
   targetSetter: {fileID: 1134222165}
-  difficultyPanel: {fileID: 0}
-  gameplayPanel: {fileID: 0}
-  scoreText: {fileID: 0}
 --- !u!4 &1824298903
 Transform:
   m_ObjectHideFlags: 0

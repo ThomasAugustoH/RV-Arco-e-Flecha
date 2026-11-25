@@ -86,11 +86,16 @@ namespace ArcheryGame.UI
             gameManager = manager;
 
             if (gameManager == null)
+            {
+                RefreshVisibility();
                 return;
+            }
 
             gameManager.OnScoreChanged += SetScore;
+            gameManager.OnRoundChanged += RefreshVisibility;
             subscribed = true;
             SetScore(gameManager.TotalScore);
+            RefreshVisibility();
         }
 
         /// <summary>Parents the HUD text to <paramref name="head"/> at the top-right view offset.</summary>
@@ -110,6 +115,7 @@ namespace ArcheryGame.UI
             labelTransform.localRotation = Quaternion.identity;
             labelTransform.localScale = Vector3.one;
             label.text = currentText;
+            RefreshVisibility();
         }
 
         /// <summary>Updates the displayed score.</summary>
@@ -124,9 +130,18 @@ namespace ArcheryGame.UI
         private void Unbind()
         {
             if (subscribed && gameManager != null)
+            {
                 gameManager.OnScoreChanged -= SetScore;
+                gameManager.OnRoundChanged -= RefreshVisibility;
+            }
 
             subscribed = false;
+        }
+
+        private void RefreshVisibility()
+        {
+            if (label != null)
+                label.gameObject.SetActive(gameManager == null || gameManager.Phase != RoundPhase.Menu);
         }
 
         private void TryAttachToHead()

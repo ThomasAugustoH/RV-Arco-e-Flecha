@@ -3,6 +3,7 @@
     "rootNamespace": "ArcheryGame",
     "references": [
         "Unity.TextMeshPro",
+        "UnityEngine.UI",
         "Oculus.VR"
     ],
     "includePlatforms": [],

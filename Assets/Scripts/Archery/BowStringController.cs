@@ -11,7 +11,8 @@ namespace ArcheryGame.Archery
         [SerializeField] private float stringWidth = 0.008f;
         [SerializeField] private Color stringColor = new Color(0.92f, 0.92f, 0.92f, 1f);
 
-        private Vector3 nockingPosition;
+        private Vector3 localNockingPosition;
+        private bool isDrawn;
         private Material stringMaterial;
 
         private void Awake()
@@ -28,7 +29,6 @@ namespace ArcheryGame.Archery
 
             ConfigureLine(upperString);
             ConfigureLine(lowerString);
-            nockingPosition = transform.position;
         }
 
         private void OnDestroy()
@@ -38,11 +38,19 @@ namespace ArcheryGame.Archery
 
         public void SetNockingPosition(Vector3 position)
         {
-            nockingPosition = position;
+            localNockingPosition = transform.InverseTransformPoint(position);
+            isDrawn = true;
         }
+
+        public void ResetToRest() => isDrawn = false;
 
         private void LateUpdate()
         {
+            if (topStringPoint == null || bottomStringPoint == null) return;
+
+            Vector3 nockingPosition = isDrawn
+                ? transform.TransformPoint(localNockingPosition)
+                : (topStringPoint.position + bottomStringPoint.position) * 0.5f;
             UpdateLine(upperString, topStringPoint, nockingPosition);
             UpdateLine(lowerString, bottomStringPoint, nockingPosition);
         }
@@ -52,8 +60,8 @@ namespace ArcheryGame.Archery
             if (line == null) return;
             line.positionCount = 2;
             line.useWorldSpace = true;
-            line.startWidth = stringWidth;
-            line.endWidth = stringWidth;
+            line.widthCurve = AnimationCurve.Constant(0f, 1f, 1f);
+            line.widthMultiplier = stringWidth;
             line.startColor = stringColor;
             line.endColor = stringColor;
             if (stringMaterial != null) line.sharedMaterial = stringMaterial;
